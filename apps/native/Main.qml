@@ -99,9 +99,10 @@ ApplicationWindow {
             Label { text: window.pendingName; color: window.ink; font.pixelSize: 21; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
             Caption { text: window.pendingSize + " · von „" + window.pendingSender + "“"; Layout.fillWidth: true }
             Caption { text: "Gerätenamen sind nicht verifiziert. Nimm die Datei nur an, wenn du den Sender erwartest."; Layout.fillWidth: true }
+            CheckBox { id: rememberSender; text: "Dieses Gerät dauerhaft koppeln"; checked: false }
             RowLayout {
                 Action { text: "Ablehnen"; onClicked: quicky.acceptIncoming(false); Layout.fillWidth: true }
-                Action { text: "Annehmen"; primary: true; onClicked: quicky.acceptIncoming(true); Layout.fillWidth: true }
+                Action { text: "Annehmen"; primary: true; onClicked: quicky.acceptIncoming(true, rememberSender.checked); Layout.fillWidth: true }
             }
         }
     }
@@ -174,6 +175,24 @@ ApplicationWindow {
                                 Action { visible: quicky.state === "paused"; text: "Fortsetzen"; primary: true; onClicked: quicky.resume() }
                                 Action { text: "Abbrechen"; onClicked: quicky.cancel() }
                             }
+                        }
+                    }
+                    Card {
+                        visible: quicky.pairedDevices.length > 0
+                        Layout.fillWidth: true; implicitHeight: pairedColumn.implicitHeight + 40
+                        ColumnLayout {
+                            id: pairedColumn; anchors.fill: parent; anchors.margins: 20; spacing: 12
+                            Label { text: "Deine gekoppelten Geräte"; color: window.ink; font.pixelSize: 21; font.weight: Font.DemiBold }
+                            Repeater {
+                                model: quicky.pairedDevices
+                                delegate: RowLayout {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    Label { text: modelData.name; color: window.ink; elide: Text.ElideRight; Layout.fillWidth: true }
+                                    Action { text: "Senden"; primary: true; enabled: !quicky.busy && window.chosenFiles.length > 0; onClicked: quicky.sendToDevice(modelData.fingerprint, window.chosenFiles) }
+                                }
+                            }
+                            Caption { text: "Dateien unten auswählen und hier direkt senden. Die Geräteidentität wird bei jeder Verbindung geprüft."; Layout.fillWidth: true }
                         }
                     }
                     GridLayout {
@@ -282,7 +301,17 @@ ApplicationWindow {
                     Caption { text: "Gerätename" }
                     Input { text: quicky.deviceName; Layout.fillWidth: true; maximumLength: 60; onEditingFinished: quicky.deviceName = text }
                     Switch { text: "Im lokalen Netzwerk sichtbar"; checked: quicky.visible; onToggled: quicky.visible = checked }
-                    Caption { text: "Für diese erste Version: temporäre Einladung plus Bestätigung. Kontakte und dauerhaft gekoppelte Geräte folgen später."; Layout.fillWidth: true }
+                    Switch { text: "Nur gekoppelte Geräte zulassen"; checked: quicky.onlyTrusted; onToggled: quicky.onlyTrusted = checked }
+                    Caption { text: "Für eine neue Kopplung: diese Einschränkung ausschalten, eine Einladung teilen und beim Empfang ›dauerhaft koppeln‹ auswählen. Jeder Transfer benötigt weiterhin deine Bestätigung."; Layout.fillWidth: true }
+                    Repeater {
+                        model: quicky.pairedDevices
+                        delegate: RowLayout {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Label { text: modelData.name; color: window.ink; Layout.fillWidth: true; elide: Text.ElideRight }
+                            Action { text: "Entkoppeln"; onClicked: quicky.forgetDevice(modelData.fingerprint) }
+                        }
+                    }
                     Caption { text: Qt.platform.os === "android" ? "Empfang im privaten App-Speicher. Nach dem Transfer mit ›Speichern‹ an einen gewünschten Ort exportieren. Quicky während des Transfers geöffnet lassen." : "Empfangsordner: " + quicky.receiveFolder; Layout.fillWidth: true }
                     RowLayout {
                         Action { visible: Qt.platform.os !== "android"; text: "Ordner wählen"; enabled: !quicky.busy; onClicked: folderPicker.open() }

@@ -38,7 +38,13 @@ jobs:
           version: '6.8.3'
           arch: win64_msvc2022_64
           cache: true
+      - uses: actions/cache@v4
+        id: openssl-cache
+        with:
+          path: ${{ runner.temp }}/quicky-vcpkg
+          key: windows-openssl-vcpkg-2025.06.13-v1
       - name: Build OpenSSL
+        if: steps.openssl-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           git clone --branch 2025.06.13 --depth 1 https://github.com/microsoft/vcpkg.git "$env:RUNNER_TEMP/quicky-vcpkg"
@@ -81,11 +87,11 @@ jobs:
       - uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.3'
-          host: linux
+          host: all_os
           target: android
           arch: android_arm64_v8a
           cache: true
-          aqtversion: '==3.2.1'
+          aqtversion: '==3.3.0'
       - name: Build native OpenSSL and Android APK
         env:
           ANDROID_NDK_ROOT: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125

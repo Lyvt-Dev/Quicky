@@ -6,6 +6,9 @@ Unicode True
 !ifndef STAGE
   !define STAGE "stage"
 !endif
+!ifndef UNINSTALL_MANIFEST
+  !error "Build with packaging/windows/build.ps1 to generate the uninstall manifest"
+!endif
 Name "Quicky"
 OutFile "Quicky-${VERSION}-windows-x64-setup.exe"
 InstallDir "$LOCALAPPDATA\Programs\Quicky"
@@ -37,8 +40,8 @@ Section "Quicky" SecMain
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky" "DisplayName" "Quicky"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky" "Publisher" "Lyvt-Dev"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky" "UninstallString" '$"$INSTDIR\Uninstall.exe$"'
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky" "QuietUninstallString" '$"$INSTDIR\Uninstall.exe$" /S'
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky" "QuietUninstallString" '"$INSTDIR\Uninstall.exe" /S'
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky" "NoRepair" 1
 SectionEnd
@@ -48,7 +51,9 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\Quicky\Quicky.lnk"
   Delete "$SMPROGRAMS\Quicky\Deinstallieren.lnk"
   RMDir "$SMPROGRAMS\Quicky"
-  RMDir /r "$INSTDIR"
+  !include "${UNINSTALL_MANIFEST}"
+  Delete "$INSTDIR\Uninstall.exe"
+  RMDir "$INSTDIR"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Quicky"
   DeleteRegKey HKCU "Software\Quicky"
   ; Device identity, history and received files intentionally survive uninstall.

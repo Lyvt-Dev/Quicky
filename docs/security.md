@@ -38,7 +38,7 @@ partial fails verification and removes that partial, requiring another attempt.
 Network operations have timeouts and bounded buffers/headers/handshakes. Hashing
 runs on workers, but there is no third-party security audit or fuzzing coverage.
 No production-ready security claim is made. The preview does not implement
-persistent mutual key trust, automatic retry, signed updates or mobile background
+persistent mutual key trust, signed updates or mobile background
 services. Pending incoming files require consent before allocating disk space.
 
 ## Production gates

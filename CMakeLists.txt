@@ -18,6 +18,7 @@ if(QUICKY_BUILD_APP)
   qt_add_library(quicky_network STATIC
     apps/native/identity.cpp apps/native/identity.hpp
     apps/native/engine.cpp apps/native/engine.hpp)
+  target_sources(quicky_network PRIVATE apps/native/mdns.cpp apps/native/mdns.hpp)
   target_link_libraries(quicky_network PUBLIC Qt6::Core Qt6::Network Qt6::Concurrent OpenSSL::Crypto)
   target_include_directories(quicky_network PUBLIC apps/native)
   target_compile_features(quicky_network PUBLIC cxx_std_20)

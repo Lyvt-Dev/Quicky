@@ -6,6 +6,12 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.net.wifi.WifiManager;
+import android.content.Context;
+import androidx.core.content.ContextCompat;
+import android.os.Build;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.provider.OpenableColumns;
 import android.view.WindowManager;
 import android.widget.Toast;
@@ -20,6 +26,21 @@ import java.util.concurrent.atomic.AtomicReference;
 public class QuickyActivity extends QtActivity {
     private static final int EXPORT_FILE = 7101;
     private String exportPath;
+    private WifiManager.MulticastLock multicastLock;
+    private boolean serviceActive = false;
+    @Override public void onCreate(Bundle state) {
+        super.onCreate(state);
+        WifiManager wifi = (WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wifi != null) {
+            multicastLock = wifi.createMulticastLock("Quicky discovery");
+            multicastLock.setReferenceCounted(false);
+            multicastLock.acquire();
+        }
+    }
+    @Override public void onDestroy() {
+        if (multicastLock != null && multicastLock.isHeld()) multicastLock.release();
+        super.onDestroy();
+    }
     private final AtomicReference<String> scanResult = new AtomicReference<>("");
     public void scanInvitation() {
         runOnUiThread(() -> new IntentIntegrator(this)
@@ -40,8 +61,22 @@ public class QuickyActivity extends QtActivity {
     }
     public void keepAwake(boolean enabled) {
         runOnUiThread(() -> {
-            if (enabled) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            if (serviceActive == enabled) return;
+            serviceActive = enabled;
+            Intent service = new Intent(this, TransferService.class);
+            if (enabled) {
+                if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 7102);
+                try { ContextCompat.startForegroundService(this, service); }
+                catch (Exception error) {
+                    serviceActive = false;
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    Toast.makeText(this, "Bitte Quicky während des Transfers geöffnet lassen", Toast.LENGTH_LONG).show();
+                }
+            } else {
+                stopService(service);
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            }
         });
     }
     public void exportFile(String path) {

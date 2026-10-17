@@ -31,6 +31,8 @@ class Engine : public QObject {
     Q_PROPERTY(double progress READ progress NOTIFY changed)
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     Q_PROPERTY(QVariantList history READ history NOTIFY historyChanged)
+    Q_PROPERTY(QVariantList pairedDevices READ pairedDevices NOTIFY settingsChanged)
+    Q_PROPERTY(bool onlyTrusted READ onlyTrusted WRITE setOnlyTrusted NOTIFY settingsChanged)
     Q_PROPERTY(bool visible READ visible WRITE setVisible NOTIFY settingsChanged)
     Q_PROPERTY(bool darkMode READ darkMode WRITE setDarkMode NOTIFY settingsChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY changed)
@@ -39,7 +41,7 @@ class Engine : public QObject {
 public:
     explicit Engine(const QString& dataDirectory = {}, QObject* parent = nullptr);
     ~Engine() override;
-    bool start(quint16 port = 0, bool discover = true);
+    bool start(quint16 port = 45440, bool discover = true);
     QString deviceName() const { return name_; }
     QString receiveFolder() const { return folder_; }
     QString invitation() const;
@@ -49,6 +51,8 @@ public:
     double progress() const { return state_ == "completed" ? 1.0 : (total_ ? double(done_) / double(total_) : 0); }
     QVariantList devices() const;
     QVariantList history() const { return history_; }
+    QVariantList pairedDevices() const;
+    bool onlyTrusted() const { return onlyTrusted_; }
     bool visible() const { return visible_; }
     bool darkMode() const { return dark_; }
     bool busy() const;
@@ -59,10 +63,13 @@ public:
     void setReceiveFolder(const QString& value);
     void setVisible(bool value);
     void setDarkMode(bool value);
+    void setOnlyTrusted(bool value);
+    Q_INVOKABLE void forgetDevice(const QString& fingerprint);
+    Q_INVOKABLE void sendToDevice(const QString& fingerprint, const QVariantList& files);
     Q_INVOKABLE void renewInvitation();
     Q_INVOKABLE void sendFiles(const QVariantList& urls, const QString& invitation);
     Q_INVOKABLE void sendText(const QString& text, const QString& invitation);
-    Q_INVOKABLE void acceptIncoming(bool accepted);
+    Q_INVOKABLE void acceptIncoming(bool accepted, bool remember = false);
     Q_INVOKABLE void pause();
     Q_INVOKABLE void resume();
     Q_INVOKABLE void cancel();
@@ -90,11 +97,14 @@ private:
     void fail(const QString& message);
     void update(const QString& state, const QString& status, const QString& detail = {});
     void addHistory(const QString& name, const QString& direction, quint64 bytes);
+    void rememberDevice(const QString& fingerprint, const QString& name, const QString& host, quint16 port);
     void advertise();
     void readDiscovery();
     void expireDevices();
+    void readMdns();
     void cleanupReceive(bool removePartial);
     void resetSender();
+    void retrySender(const QString& reason);
     static void sendJson(QSslSocket* socket, const QJsonObject& message);
     static QByteArray hashFile(const QString& path);
     QString dataDirectory_;
@@ -103,11 +113,17 @@ private:
     QString name_, folder_, token_;
     qint64 expires_ = 0;
     bool visible_ = true, dark_ = true;
+    bool onlyTrusted_ = false, rememberIncoming_ = false;
+    QString incomingFingerprint_;
+    QJsonObject trusted_;
     QString status_ = "Bereit zum Teilen", detail_, state_ = "idle";
     quint64 done_ = 0, total_ = 0;
     quint64 operation_ = 0;
+    int retries_ = 0;
     TlsListener server_;
     QUdpSocket discovery_;
+    QUdpSocket mdns_;
+    qint64 mdnsLastResponse_ = 0;
     QTimer beacon_, expiry_;
     struct Peer { QVariantMap data; qint64 seen; };
     QMap<QString, Peer> peers_;

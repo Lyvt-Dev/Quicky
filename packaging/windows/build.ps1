@@ -25,12 +25,23 @@ try {
     Copy-Item "$OpenSSLRoot/bin/libssl-3-x64.dll" $Stage
     Copy-Item README.md,THIRD_PARTY_NOTICES.md $Stage
     Copy-Item -Recurse licenses $Stage -Force
+    $Manifest = Join-Path $Root "$Build/uninstall-files.nsh"
+    $Lines = @()
+    foreach ($File in Get-ChildItem $Stage -File -Recurse) {
+        $Relative = $File.FullName.Substring($Stage.Length + 1).Replace('$', '$$')
+        $Lines += 'Delete "$INSTDIR\' + $Relative + '"'
+    }
+    foreach ($Dir in Get-ChildItem $Stage -Directory -Recurse | Sort-Object { $_.FullName.Length } -Descending) {
+        $Relative = $Dir.FullName.Substring($Stage.Length + 1).Replace('$', '$$')
+        $Lines += 'RMDir "$INSTDIR\' + $Relative + '"'
+    }
+    $Lines | Set-Content $Manifest -Encoding utf8
     # Keep dynamically linked libraries replaceable for LGPL compliance.
     $Installer = Join-Path ${env:ProgramFiles(x86)} 'NSIS/makensis.exe'
     if (!(Test-Path $Installer)) { $Installer = (Get-Command makensis.exe).Source }
     Push-Location $Build
     try {
-        Run { & $Installer "/DVERSION=$Version" "/DSTAGE=$Stage" "$Root/packaging/windows/Quicky.nsi" }
+        Run { & $Installer /NOCD "/DVERSION=$Version" "/DSTAGE=$Stage" "/DUNINSTALL_MANIFEST=$Manifest" "$Root/packaging/windows/Quicky.nsi" }
         $Exe = "Quicky-$Version-windows-x64-setup.exe"
         Get-FileHash -Algorithm SHA256 $Exe | ForEach-Object { "$($_.Hash.ToLower())  $Exe" } | Set-Content "$Exe.sha256" -Encoding ascii
     } finally { Pop-Location }

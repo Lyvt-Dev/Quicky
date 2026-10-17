@@ -10,7 +10,7 @@ are the initial targets; the desktop app also builds on Linux and macOS.
 - Cryptographically random, five-minute invitation; explicit consent for each file.
 - Streaming file transfer with bounded buffers and SHA-256 content verification.
 - Multi-file queue, cancellation, sender pause/resume and retained partial-file recovery.
-- Local device discovery via UDP broadcast (not yet mDNS/BLE).
+- mDNS/DNS-SD device discovery with UDP broadcast fallback (BLE later).
 - Text and links sent as UTF-8 files.
 - Collision-safe received filenames, disk-space checks and path validation.
 - Windows per-user NSIS installer and automated install/run/uninstall smoke tests in CI.

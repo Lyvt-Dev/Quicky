@@ -33,7 +33,8 @@ int main(int argc, char** argv) {
         });
 #ifdef Q_OS_ANDROID
         QObject::connect(&service, &Engine::changed, &app, [&service] {
-            QNativeInterface::QAndroidApplication::context().callMethod<void>("keepAwake", "(Z)V", service.busy());
+            const bool active = service.busy() && service.state() != "paused" && service.state() != "offered";
+            QNativeInterface::QAndroidApplication::context().callMethod<void>("keepAwake", "(Z)V", active);
         });
 #endif
         qml.addImageProvider("qr", new QrProvider);

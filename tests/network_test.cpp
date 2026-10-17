@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "mdns.hpp"
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QElapsedTimer>
@@ -34,6 +35,19 @@ int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
     app.setApplicationName("QuickyNetworkTests");
     try {
+        const mdns::Advertisement announced{"Test device", "android", QString(64, 'a'), 42424};
+        const auto packet = mdns::announce(announced, "192.168.1.8");
+        const auto records = mdns::parse(packet);
+        require(records.size() == 1 && records.first().name == announced.name &&
+            records.first().port == 42424 && records.first().fingerprint == announced.fingerprint,
+            "mDNS announcement roundtrip failed");
+        require(mdns::isQuery(mdns::query()), "mDNS service query failed");
+        for (qsizetype i = 0; i < packet.size(); ++i)
+            require(mdns::parse(packet.left(i)).isEmpty(), "Truncated mDNS packet accepted");
+        QByteArray cyclic(12, '\0'); cyclic[2] = char(0x84); cyclic[7] = 1;
+        cyclic += QByteArray::fromHex("c00c");
+        require(mdns::parse(cyclic).isEmpty(), "Cyclic compression accepted");
+        std::cout << "PASS mDNS roundtrip, truncation and compression loop rejection\n";
         QTemporaryDir temp; require(temp.isValid(), "Temporary directory unavailable");
         Engine receiver(temp.path() + "/receiver");
         Engine sender(temp.path() + "/sender");
@@ -106,7 +120,48 @@ int main(int argc, char** argv) {
         waitUntil([&] { return sender.state() == "completed" || sender.state() == "failed"; });
         require(sender.state() == "completed" && receiver.history().size() == 5, "Multi-file queue failed");
         std::cout << "PASS sequential multi-file queue\n";
+        bool paused = false;
+        auto pauseConnection = QObject::connect(&sender, &Engine::changed, &sender, [&] {
+            if (!paused && sender.state() == "sending") {
+                paused = true;
+                sender.pause();
+                QTimer::singleShot(100, &sender, &Engine::resume);
+            }
+        });
+        sender.sendFiles({QUrl::fromLocalFile(file)}, invite(receiver));
+        waitUntil([&] { return sender.state() == "completed" || sender.state() == "failed"; });
+        QObject::disconnect(pauseConnection);
+        require(paused && sender.state() == "completed", "Sender pause/resume failed");
+        std::cout << "PASS sender pause/resume\n";
+        bool interrupted = false;
+        auto interrupt = QObject::connect(&receiver, &Engine::changed, &receiver, [&] {
+            if (!interrupted && receiver.state() == "receiving") {
+                interrupted = true;
+                QTimer::singleShot(0, &receiver, &Engine::cancel);
+            }
+        });
+        sender.sendFiles({QUrl::fromLocalFile(file)}, invite(receiver));
+        waitUntil([&] { return sender.state() == "completed" || sender.state() == "failed"; });
+        QObject::disconnect(interrupt);
+        require(interrupted && sender.state() == "completed", "Automatic reconnect failed");
+        std::cout << "PASS automatic reconnect\n";
         receiver.clearHistory(); require(receiver.history().isEmpty(), "History clearing failed");
+        QObject::disconnect(consent);
+        consent = QObject::connect(&receiver, &Engine::incomingOffer, &receiver,
+            [&receiver] { receiver.acceptIncoming(true, true); });
+        sender.sendFiles({QUrl::fromLocalFile(file)}, invite(receiver));
+        waitUntil([&] { return sender.state() == "completed" || sender.state() == "failed"; });
+        require(sender.state() == "completed" && sender.pairedDevices().size() == 1 &&
+            receiver.pairedDevices().size() == 1, "Mutual trust not saved");
+        receiver.setOnlyTrusted(true);
+        sender.sendToDevice(receiver.fingerprint(), {QUrl::fromLocalFile(empty)});
+        waitUntil([&] { return sender.state() == "completed" || sender.state() == "failed"; });
+        require(sender.state() == "completed", "Trusted device transfer without invitation failed");
+        receiver.forgetDevice(sender.fingerprint());
+        sender.sendToDevice(receiver.fingerprint(), {QUrl::fromLocalFile(empty)});
+        waitUntil([&] { return sender.state() == "failed"; });
+        require(receiver.history().size() == 2, "Revoked device accepted");
+        std::cout << "PASS persistent mutual pairing, trusted-only mode and revocation\n";
         std::cout << "All encrypted integration scenarios passed\n";
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

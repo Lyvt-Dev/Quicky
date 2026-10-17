@@ -7,13 +7,13 @@ cancellation, local device discovery, text/link files, history and dark/light mo
 
 **Preview limitations**
 
-- Same reachable IPv4 network; no Wi-Fi Direct, BLE, relay or mDNS yet.
+- Same reachable IPv4 network; mDNS with broadcast fallback, no Wi-Fi Direct, BLE or relay.
 - Pair through copied invitation links or the Android QR camera scanner.
 - No persistent trusted-device pairing or contact-based visibility.
 - Android must remain open and uses app-private receipt plus system Save export.
 - Windows installer is unsigned; Android APK is debug-signed for preview testing.
 - No production security audit, signed mobile-store release or iOS build yet.
-- Interrupted transfers are resumed explicitly, not automatically retried.
+- Transient connection failures retry up to three times; declined or invalid transfers do not retry.
 
 Do not treat this preview as the completed cross-platform product. Native device
 acceptance tests and production signing remain required before a stable release.

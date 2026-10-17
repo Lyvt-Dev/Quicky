@@ -13,10 +13,24 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.util.concurrent.Executors;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class QuickyActivity extends QtActivity {
     private static final int EXPORT_FILE = 7101;
     private String exportPath;
+    private final AtomicReference<String> scanResult = new AtomicReference<>("");
+    public void scanInvitation() {
+        runOnUiThread(() -> new IntentIntegrator(this)
+            .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
+            .setBeepEnabled(false).setOrientationLocked(false)
+            .setPrompt("Quicky-Einladung scannen")
+            .initiateScan());
+    }
+    public String takeScanResult() {
+        return scanResult.getAndSet("");
+    }
     public String displayName(String uri) {
         try (Cursor cursor = getContentResolver().query(Uri.parse(uri),
                 new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
@@ -50,6 +64,11 @@ public class QuickyActivity extends QtActivity {
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        IntentResult scan = IntentIntegrator.parseActivityResult(request, result, data);
+        if (scan != null) {
+            scanResult.set(scan.getContents() == null ? "\n" : scan.getContents());
+            return;
+        }
         if (request != EXPORT_FILE || result != Activity.RESULT_OK || data == null || exportPath == null) return;
         final String source = exportPath;
         final Uri destination = data.getData();

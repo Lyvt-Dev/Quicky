@@ -20,13 +20,13 @@ are the initial targets; the desktop app also builds on Linux and macOS.
 
 1. Connect both devices to the same reachable network and open Quicky.
 2. On the receiving device, copy its five-minute QR invitation.
-3. Paste the invitation into the sender, choose files and send.
+3. Paste the invitation into the sender (or scan its QR code on Android), choose files and send.
 4. Confirm each incoming file on the receiver.
 5. On Android, use **Empfangene Datei speichern** to export the received file
    from app-private storage to a selected system location.
 
-The QR code encodes the same invitation. In-app camera scanning is not yet
-implemented; use the copy/paste link workflow. Discovery names are untrusted.
+The QR code encodes the same invitation. Android provides a native QR scanner;
+desktop uses invitation copy/paste. Discovery names are untrusted.
 Never publish invitations. Open Quicky on both devices during transfers.
 
 ## Build (desktop)

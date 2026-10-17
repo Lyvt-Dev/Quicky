@@ -74,6 +74,10 @@ ApplicationWindow {
         onAccepted: quicky.receiveFolder = selectedFolder.toString()
     }
     Connections {
+        target: ui
+        function onInvitationScanned(invitation) { invitationInput.text = invitation }
+    }
+    Connections {
         target: quicky
         function onIncomingOffer(name, sender, size) {
             window.pendingName = name; window.pendingSender = sender; window.pendingSize = size
@@ -192,17 +196,18 @@ ApplicationWindow {
                                     DropArea { anchors.fill: parent; onDropped: function(drop) { if (drop.hasUrls && !quicky.busy) window.chosenFiles = drop.urls } }
                                 }
                                 Caption { text: "1. Öffne Quicky auf dem Empfänger.\n2. Kopiere dort die QR-Einladung.\n3. Füge den Link hier ein und sende."; Layout.fillWidth: true }
-                                Input { id: target; Layout.fillWidth: true; placeholderText: "quicky://pair?host=…"; Accessible.name: "Einladung des Empfängers" }
+                                Input { id: invitationInput; Layout.fillWidth: true; placeholderText: "quicky://pair?host=…"; Accessible.name: "Einladung des Empfängers" }
+                                Action { visible: Qt.platform.os === "android"; text: "QR-Einladung scannen"; enabled: !quicky.busy; onClicked: ui.scanInvitation(); Layout.fillWidth: true }
                                 RowLayout {
-                                    Action { text: "Einfügen"; onClicked: target.text = ui.paste(); Layout.fillWidth: true }
-                                    Action { text: "Dateien senden"; primary: true; enabled: !quicky.busy && window.chosenFiles.length > 0 && target.text.length > 0; onClicked: quicky.sendFiles(window.chosenFiles, target.text); Layout.fillWidth: true }
+                                    Action { text: "Einfügen"; onClicked: invitationInput.text = ui.paste(); Layout.fillWidth: true }
+                                    Action { text: "Dateien senden"; primary: true; enabled: !quicky.busy && window.chosenFiles.length > 0 && invitationInput.text.length > 0; onClicked: quicky.sendFiles(window.chosenFiles, invitationInput.text); Layout.fillWidth: true }
                                 }
                                 TextArea {
                                     id: textPayload; Layout.fillWidth: true; implicitHeight: 80; color: window.ink; placeholderTextColor: window.muted
                                     placeholderText: "Oder Text / Link teilen …"; wrapMode: TextEdit.Wrap; selectByMouse: true
                                     background: Rectangle { color: window.bg; radius: 12; border.color: window.line }
                                 }
-                                Action { text: "Text als Datei senden"; enabled: !quicky.busy && textPayload.text.length > 0 && target.text.length > 0; onClicked: quicky.sendText(textPayload.text, target.text); Layout.fillWidth: true }
+                                Action { text: "Text als Datei senden"; enabled: !quicky.busy && textPayload.text.length > 0 && invitationInput.text.length > 0; onClicked: quicky.sendText(textPayload.text, invitationInput.text); Layout.fillWidth: true }
                             }
                         }
                         ColumnLayout {

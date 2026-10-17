@@ -8,7 +8,7 @@ cancellation, local device discovery, text/link files, history and dark/light mo
 **Preview limitations**
 
 - Same reachable IPv4 network; no Wi-Fi Direct, BLE, relay or mDNS yet.
-- Pair through copied invitation links; no built-in QR camera scanner yet.
+- Pair through copied invitation links or the Android QR camera scanner.
 - No persistent trusted-device pairing or contact-based visibility.
 - Android must remain open and uses app-private receipt plus system Save export.
 - Windows installer is unsigned; Android APK is debug-signed for preview testing.
